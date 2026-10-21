@@ -84,7 +84,11 @@ table{border-collapse:collapse;width:100%}
 .tblwrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:10px}
 .rank th,.rank td{padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:left;white-space:nowrap}
 .rank th{position:sticky;top:0;background:#f8fafc;font-size:12px;color:var(--sub);z-index:1}
-.rank td.name{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.rank td.name{max-width:360px;overflow:hidden;text-overflow:ellipsis}
+.rank td.cmp{font-weight:700;font-size:12px}
+.up{color:#059669}.down{color:#e11d48}.flat{color:#64748b}
+.kpi .dl{font-size:12px;font-weight:700;margin-top:2px}
+.cmpbar{background:#eef2ff;border-radius:10px;padding:8px 12px;font-size:12px;color:#3730a3;margin-top:10px}
 .num{text-align:right!important;font-variant-numeric:tabular-nums}
 .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .barcell{display:flex;align-items:center;gap:8px;min-width:170px}
@@ -205,19 +209,19 @@ table{border-collapse:collapse;width:100%}
         <div class="card"><h2><span class="ic">🏢</span>卸先ごとの割合</h2><p class="hint">個人宛は「個人（店舗名）」にまとめて表示しています。</p><div class="chartbox"><canvas id="ovDest"></canvas></div></div>
         <div class="card"><h2><span class="ic">📦</span>商品ごとの割合</h2><p class="hint">出荷個数（ピース）に占める各商品の割合です。</p><div class="chartbox"><canvas id="ovProd"></canvas></div></div>
       </div>
-      <div class="card mt"><h2><span class="ic">📈</span>出荷個数の推移</h2><p class="hint">棒＝出荷個数、折れ線＝出荷件数（伝票数）。点線は出荷があった日（週・月）の平均個数です。</p><div class="chartbox"><canvas id="ovTrend"></canvas></div></div>
+      <div class="card mt"><h2><span class="ic">📈</span>出荷個数の推移</h2><p class="hint">棒＝出荷個数、折れ線＝出荷件数（伝票数）。点線は出荷があった日（週・月）の平均個数です。日別では、倉庫全体で出荷が無い日（土日祝など）は表示しません。</p><div class="chartbox"><canvas id="ovTrend"></canvas></div></div>
     </div>
 
     <div class="panel" data-p="owners">
       <p class="hint" style="margin-top:0">この画面は、右上の荷主選択に関係なく<b>全荷主を比較</b>します（期間・対象の切り替えは反映されます）。</p>
       <div class="grid g2">
         <div class="card"><h2><span class="ic">🍩</span>荷主ごとの割合</h2><p class="hint">出荷個数（ピース）に占める各荷主の割合です。</p><div class="chartbox"><canvas id="oDonut"></canvas></div></div>
-        <div class="card"><h2><span class="ic">📊</span>荷主ランキング</h2><p class="hint">卸比率＝その荷主の出荷個数のうち卸向けの割合です。</p><div id="oRank" class="tblwrap" style="max-height:330px"></div></div>
+        <div class="card"><h2><span class="ic">📈</span>荷主ごとの推移</h2>
+          <div class="ctl">表示 <div class="seg" data-mode="owner"><button data-m="qty" class="on">個数</button><button data-m="share">構成比（%）</button></div>
+            上位 <div class="seg" data-top="owner"><button data-n="5">5荷主</button><button data-n="8" class="on">8荷主</button><button data-n="12">12荷主</button></div></div>
+          <div class="chartbox"><canvas id="oTrend"></canvas></div></div>
       </div>
-      <div class="card mt"><h2><span class="ic">📈</span>荷主ごとの推移</h2>
-        <div class="ctl">表示 <div class="seg" data-mode="owner"><button data-m="qty" class="on">個数</button><button data-m="share">構成比（%）</button></div>
-          上位 <div class="seg" data-top="owner"><button data-n="5">5荷主</button><button data-n="8" class="on">8荷主</button><button data-n="12">12荷主</button></div></div>
-        <div class="chartbox tall"><canvas id="oTrend"></canvas></div></div>
+      <div class="card mt"><h2><span class="ic">📊</span>荷主ランキング</h2><p class="hint">卸比率＝その荷主の出荷個数のうち卸向けの割合です。<span class="cmpnote"></span></p><div id="oRank" class="tblwrap" style="max-height:420px"></div></div>
       <div class="grid g2 mt">
         <div class="card"><h2><span class="ic">🔀</span>卸と個人の内訳（荷主別）</h2><p class="hint">各荷主の出荷個数を、卸向けと個人向けに分けています。</p><div class="chartbox"><canvas id="oMix"></canvas></div></div>
         <div class="card"><h2><span class="ic">🛒</span>店舗（販路）ごとの割合</h2><p class="hint" id="oShopHint"></p><div class="chartbox"><canvas id="oShop"></canvas></div></div>
@@ -227,23 +231,23 @@ table{border-collapse:collapse;width:100%}
     <div class="panel" data-p="dest">
       <div class="grid g2">
         <div class="card"><h2><span class="ic">🍩</span>卸先ごとの割合</h2><p class="hint">上位7件を色分けし、残りは「その他」にまとめています。</p><div class="chartbox"><canvas id="dDonut"></canvas></div></div>
-        <div class="card"><h2><span class="ic">📊</span>卸先ランキング</h2><p class="hint">件数＝出荷件数（伝票数）、1件あたり＝1回の出荷での平均個数です。</p><div id="dRank" class="tblwrap" style="max-height:330px"></div></div>
+        <div class="card"><h2><span class="ic">📈</span>卸先ごとの推移</h2>
+          <div class="ctl">表示 <div class="seg" data-mode="dest"><button data-m="qty" class="on">個数</button><button data-m="share">構成比（%）</button></div>
+            上位 <div class="seg" data-top="dest"><button data-n="3">3件</button><button data-n="5" class="on">5件</button><button data-n="8">8件</button></div></div>
+          <div class="chartbox"><canvas id="dTrend"></canvas></div></div>
       </div>
-      <div class="card mt"><h2><span class="ic">📈</span>卸先ごとの推移</h2>
-        <div class="ctl">表示 <div class="seg" data-mode="dest"><button data-m="qty" class="on">個数</button><button data-m="share">構成比（%）</button></div>
-          上位 <div class="seg" data-top="dest"><button data-n="3">3件</button><button data-n="5" class="on">5件</button><button data-n="8">8件</button></div></div>
-        <div class="chartbox tall"><canvas id="dTrend"></canvas></div></div>
+      <div class="card mt"><h2><span class="ic">📊</span>卸先ランキング</h2><p class="hint">件数＝出荷件数（伝票数）、1件あたり＝1回の出荷での平均個数です。<span class="cmpnote"></span></p><div id="dRank" class="tblwrap" style="max-height:480px"></div></div>
     </div>
 
     <div class="panel" data-p="prod">
       <div class="grid g2">
         <div class="card"><h2><span class="ic">🍩</span>商品ごとの割合</h2><p class="hint">上位7品を色分けし、残りは「その他」にまとめています。</p><div class="chartbox"><canvas id="pDonut"></canvas></div></div>
-        <div class="card"><h2><span class="ic">📊</span>商品ランキング</h2><p class="hint">件数＝その商品を含む出荷の件数です。</p><div id="pRank" class="tblwrap" style="max-height:330px"></div></div>
+        <div class="card"><h2><span class="ic">📈</span>商品ごとの推移</h2>
+          <div class="ctl">表示 <div class="seg" data-mode="prod"><button data-m="qty" class="on">個数</button><button data-m="share">構成比（%）</button></div>
+            上位 <div class="seg" data-top="prod"><button data-n="3">3品</button><button data-n="5" class="on">5品</button><button data-n="8">8品</button></div></div>
+          <div class="chartbox"><canvas id="pTrend"></canvas></div></div>
       </div>
-      <div class="card mt"><h2><span class="ic">📈</span>商品ごとの推移</h2>
-        <div class="ctl">表示 <div class="seg" data-mode="prod"><button data-m="qty" class="on">個数</button><button data-m="share">構成比（%）</button></div>
-          上位 <div class="seg" data-top="prod"><button data-n="3">3品</button><button data-n="5" class="on">5品</button><button data-n="8">8品</button></div></div>
-        <div class="chartbox tall"><canvas id="pTrend"></canvas></div></div>
+      <div class="card mt"><h2><span class="ic">📊</span>商品ランキング</h2><p class="hint">件数＝その商品を含む出荷の件数です。<span class="cmpnote"></span></p><div id="pRank" class="tblwrap" style="max-height:480px"></div></div>
     </div>
 
     <div class="panel" data-p="wave">
@@ -252,7 +256,7 @@ table{border-collapse:collapse;width:100%}
         <div class="card"><h2><span class="ic">📅</span>曜日別の平均（1日あたり）</h2><p class="hint">出荷があった日の平均です。オレンジが最も多い曜日。人員配置の目安に使えます。</p><div class="chartbox"><canvas id="wWeek"></canvas></div></div>
         <div class="card"><h2><span class="ic">🗓️</span>カレンダー（日ごとの出荷個数）</h2><p class="hint">色が濃いほど出荷が多い日です。</p><div id="wCal"></div></div>
       </div>
-      <div class="card mt"><h2><span class="ic">🌊</span>日別の波動</h2><p class="hint">点線は平均、赤い点は出荷が特に多かった上位3日です（この表示は常に日別）。</p><div class="chartbox"><canvas id="wDaily"></canvas></div></div>
+      <div class="card mt"><h2><span class="ic">🌊</span>日別の波動</h2><p class="hint">点線は平均、赤い点は出荷が特に多かった上位3日です（この表示は常に日別。出荷が無い日は表示しません）。</p><div class="chartbox"><canvas id="wDaily"></canvas></div></div>
     </div>
 
     <div class="panel" data-p="cross">
@@ -342,7 +346,7 @@ const LS='paretoKun_settings_v1';
 const UNASSIGNED='（未割当）';
 
 /* ---------- LOGILESS 出荷実績CSV（OutboundDeliveryLine）の列 ---------- */
-const COLS={slip:['伝票コード'],done:['完了日時'],shop:['受注店舗名','荷送人名1'],n1:['お届け先名1'],n2:['お届け先名2'],a2:['お届け先 住所2'],a3:['お届け先 住所3'],code:['商品コード'],pname:['商品名'],qty:['数量']};
+const COLS={order:['受注コード'],slip:['伝票コード'],done:['完了日時'],shop:['受注店舗名','荷送人名1'],n1:['お届け先名1'],n2:['お届け先名2'],a2:['お届け先 住所2'],a3:['お届け先 住所3'],code:['商品コード'],pname:['商品名'],qty:['数量']};
 const REQ=['slip','done','shop','n1','code','qty'];
 
 /* ---------- 初期設定（店舗→荷主・区分） ---------- */
@@ -427,6 +431,8 @@ function parseCSV(text){
 }
 const nk=s=>String(s??'').normalize('NFKC').replace(/\s+/g,' ').trim();
 const parseDate=s=>{const m=nk(s).match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);return m?m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0'):'';};
+const normTs=s=>{const m=nk(s).match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')} ${(m[4]||'0').padStart(2,'0')}:${m[5]||'00'}`:'';};
+const SCI=/^\d+(\.\d+)?E\+?\d+$/i; // Excelで上書き保存すると伝票コードが 3.00000E+12 のようになる
 const toNum=s=>{const n=parseFloat(nk(s).replace(/,/g,''));return isFinite(n)?n:0;};
 
 /* 宛先から「会社名」を取り出す */
@@ -456,7 +462,13 @@ function parseFile(name,size,lm,text){
   for(let i=1;i<rows.length;i++){
     const r=rows[i];const d=parseDate(g(r,'done'));const q=toNum(g(r,'qty'));
     if(!d||!q)continue;
-    out.rows.push([d,nk(g(r,'shop'))||'（店舗名なし）',nk(g(r,'slip')),deriveDest(g(r,'n1'),g(r,'a2'),g(r,'a3')),nk(g(r,'code')),nk(g(r,'pname')),q,BIZ.test(nk(g(r,'n1')+' '+g(r,'n2')))?1:0]);
+    const ts=normTs(g(r,'done')),shop=nk(g(r,'shop'))||'（店舗名なし）',raw=deriveDest(g(r,'n1'),g(r,'a2'),g(r,'a3'));
+    let slip=nk(g(r,'slip'));
+    if(!slip||SCI.test(slip)){ // 伝票コードが壊れている→受注コード・完了時刻・宛先で代わりの番号を作る
+      out.excel=true;const oc=nk(g(r,'order'));
+      slip='~'+(oc&&!SCI.test(oc)?oc:'')+'|'+ts+'|'+shop+'|'+raw;
+    }
+    out.rows.push([d,shop,slip,raw,nk(g(r,'code')),nk(g(r,'pname')),q,nk(g(r,'n1')+' '+g(r,'n2')),ts]);
     if(!out.minDate||d<out.minDate)out.minDate=d;if(!out.maxDate||d>out.maxDate)out.maxDate=d;
   }
   return out;
@@ -502,17 +514,24 @@ function rebuild(){
   let mx='';cand.forEach(f=>{if(f.maxDate>mx)mx=f.maxDate;});
   cutoff='';if(mx){const d=toD(mx);d.setDate(d.getDate()-RETAIN_DAYS+1);cutoff=fmt(d);}
   records=[];stats={dup:0,old:0};
-  const slipOwner=new Map();
+  // 同じ伝票が複数のCSVに入っているときは、その伝票の行が一番多いCSVを採用（同数なら新しいCSV）
+  // → 2日分のCSV・同じCSVの2回保存・昼の途中版＋全体版 のどれでも二重計上・取りこぼしにならない
+  const cnt=new Map();
+  cand.forEach(f=>{const local=new Map();f.rows.forEach(r=>local.set(r[2],(local.get(r[2])||0)+1));
+    local.forEach((n,slip)=>{const o=cnt.get(slip);if(!o||n>=o.n)cnt.set(slip,{n,id:f.id});});});
+  // Excelで上書き保存されたCSVは、元のCSVと同じ行（日時・店舗・宛先・商品・数量が一致）があればそちらを優先
+  const hasExcel=cand.some(f=>f.excel);const sig=r=>[r[8]||r[0],r[1],r[3],r[4],r[6]].join('\u0001');
+  const normalSig=new Set();if(hasExcel)cand.forEach(f=>{if(!f.excel)f.rows.forEach(r=>normalSig.add(sig(r)));});
   cand.forEach(f=>{
     f.rows.forEach(r=>{
-      const[d,shop,slip,raw,c,n,q,bz]=r;
-      const so=slipOwner.get(slip);
-      if(so!==undefined&&so!==f.id){stats.dup++;return;}
-      slipOwner.set(slip,f.id);
+      const[d,shop,slip,raw,c,n,q,nm]=r;
+      if(cnt.get(slip).id!==f.id){stats.dup++;return;}
+      if(f.excel&&slip[0]==='~'&&normalSig.has(sig(r))){stats.dup++;return;}
       if(cutoff&&d<cutoff){stats.old++;return;}
-      records.push({d,shop,slip,r:raw,c,n,q,b:!!bz});
+      records.push({d,shop,slip,r:raw,c,n,q,b:typeof nm==='string'?BIZ.test(nm):!!nm});
     });
   });
+  shipDays=new Set(records.map(r=>r.d));
   derive();
 }
 function mixedAuto(x){return x.b||x.slipQ>=(+S.mixedMinQty||20);}
@@ -549,6 +568,18 @@ function agg(recs,keyFn){
   return [...m.values()].map(o=>({key:o.key,qty:o.qty,ships:o.s.size})).sort((a,b)=>b.qty-a.qty);
 }
 const sum=(a,f=x=>x.qty)=>a.reduce((s,x)=>s+f(x),0);
+/* 前期：期間を選んでいるとき、その直前の同じ長さの期間（月初からなら前月の同じ日数） */
+function prevRange(){
+  if(!F.from||!F.to)return null;
+  const a=toD(F.from),b=toD(F.to);const len=Math.round((b-a)/864e5);
+  let pa,pb;
+  if(a.getDate()===1){pa=new Date(a.getFullYear(),a.getMonth()-1,1);const last=new Date(a.getFullYear(),a.getMonth(),0);pb=new Date(pa);pb.setDate(pb.getDate()+len);if(pb>last)pb=last;}
+  else{pb=new Date(a);pb.setDate(pb.getDate()-1);pa=new Date(pb);pa.setDate(pa.getDate()-len);}
+  return{from:fmt(pa),to:fmt(pb),short:cutoff&&fmt(pa)<cutoff};
+}
+function prevOf(recs){const p=prevRange();if(!p)return null;return recs.filter(r=>r.d>=p.from&&r.d<=p.to);}
+function pctChg(cur,prev){if(prev==null)return '';if(!prev)return cur?'<span class="up">新規</span>':'<span class="flat">－</span>';const v=(cur-prev)/Math.abs(prev);const c=v>0.0005?'up':v<-0.0005?'down':'flat';return `<span class="${c}">${v>0.0005?'▲':v<-0.0005?'▼':'±'}${Math.abs(v*100).toFixed(1)}%</span>`;}
+function cmpLabel(){const p=prevRange();if(!p)return '';return `前期＝${p.from.slice(5).replace('-','/')}〜${p.to.slice(5).replace('-','/')}`+(p.short?'（一部が保存期間の半年より前のため、前期の数字は少なめに出ます）':'');}
 const sumQ=recs=>recs.reduce((s,r)=>s+r.q,0);
 const ships=recs=>new Set(recs.map(shipId)).size;
 
@@ -558,7 +589,9 @@ const toD=s=>new Date(s+'T00:00:00');
 function periodKey(d,g){if(g==='day')return d;if(g==='month')return d.slice(0,7);const dt=toD(d);dt.setDate(dt.getDate()-((dt.getDay()+6)%7));return fmt(dt);}
 function pLab(k,g){if(g==='month'){const[y,m]=k.split('-');return y+'年'+(+m)+'月';}const d=toD(k);const s=(d.getMonth()+1)+'/'+d.getDate();return g==='week'?s+'〜':s+'('+WD[d.getDay()]+')';}
 function dateRange(recs){let mn=null,mx=null;recs.forEach(r=>{if(!mn||r.d<mn)mn=r.d;if(!mx||r.d>mx)mx=r.d;});return[mn,mx];}
-function periods(recs,g){const[mn,mx]=dateRange(recs);if(!mn)return[];const out=[],seen=new Set();const d=toD(mn),e=toD(mx);while(d<=e){const k=periodKey(fmt(d),g);if(!seen.has(k)){seen.add(k);out.push(k);}d.setDate(d.getDate()+1);}return out;}
+// 日別は「倉庫全体で出荷があった日」だけを並べる（土日祝など出荷の無い日で0に落ちないように）
+let shipDays=new Set();
+function periods(recs,g){const[mn,mx]=dateRange(recs);if(!mn)return[];const out=[],seen=new Set();const d=toD(mn),e=toD(mx);while(d<=e){const ds=fmt(d);if(g!=='day'||shipDays.has(ds)){const k=periodKey(ds,g);if(!seen.has(k)){seen.add(k);out.push(k);}}d.setDate(d.getDate()+1);}return out;}
 function series(recs,g,keyFn){const ps=periods(recs,g),ix=new Map(ps.map((p,i)=>[p,i])),m=new Map();recs.forEach(r=>{const k=keyFn?keyFn(r):'_';let a=m.get(k);if(!a){a=new Array(ps.length).fill(0);m.set(k,a);}a[ix.get(periodKey(r.d,g))]+=r.q;});return{ps,m};}
 
 /* ---------- Chart.js ---------- */
@@ -596,12 +629,13 @@ function trend(id,recs,keyFn,list,labelFn,mode,topN){
     options:{interaction:{mode:'index',intersect:false},scales:{y:{stacked:share,beginAtZero:true,max:share?100:undefined,ticks:{callback:v=>share?v+'%':nf(v)},grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:xTicks()}},
       plugins:{legend:{position:'bottom',labels:{boxWidth:12,usePointStyle:true}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${share?c.raw.toFixed(1)+'%':nf(c.raw)+'個'}`}}}}});
 }
-function rankTable(el,list,labelFn,titleFn,extra){
+function rankTable(el,list,labelFn,titleFn,extra,prevMap){
   const tot=sum(list),mx=list.length?list[0].qty:1;
-  el.innerHTML=`<table class="rank"><thead><tr><th>順位</th><th>名前</th><th class="num">個数</th><th>割合</th><th class="num">件数</th><th class="num">1件あたり</th>${extra?extra.head:''}</tr></thead><tbody>${
-    list.map((x,i)=>`<tr><td>${i+1}</td><td class="name" title="${esc(titleFn(x.key))}"><span class="dot" style="background:${i<7?COLORS[i]:OTHER}"></span>${esc(labelFn(x.key))}</td><td class="num">${nf(x.qty)}</td><td><div class="barcell"><div class="bar"><i style="width:${(x.qty/mx*100).toFixed(1)}%"></i></div><span class="pct">${pf(x.qty/tot)}</span></div></td><td class="num">${nf(x.ships)}</td><td class="num">${(x.qty/x.ships).toFixed(1)}</td>${extra?extra.cell(x):''}</tr>`).join('')
+  el.innerHTML=`<table class="rank"><thead><tr><th>順位</th><th>名前</th><th class="num">個数</th>${prevMap?'<th class="num">前期比</th>':''}<th>割合</th><th class="num">件数</th><th class="num">1件あたり</th>${extra?extra.head:''}</tr></thead><tbody>${
+    list.map((x,i)=>`<tr><td>${i+1}</td><td class="name" title="${esc(titleFn(x.key))}"><span class="dot" style="background:${i<7?COLORS[i]:OTHER}"></span>${esc(labelFn(x.key))}</td><td class="num">${nf(x.qty)}</td>${prevMap?`<td class="num cmp" title="前期 ${nf(prevMap.get(x.key)||0)}個">${pctChg(x.qty,prevMap.get(x.key)||0)}</td>`:''}<td><div class="barcell"><div class="bar"><i style="width:${(x.qty/mx*100).toFixed(1)}%"></i></div><span class="pct">${pf(x.qty/tot)}</span></div></td><td class="num">${nf(x.ships)}</td><td class="num">${(x.qty/x.ships).toFixed(1)}</td>${extra?extra.cell(x):''}</tr>`).join('')
   }</tbody></table>`;
 }
+function setCmpNote(){const t=cmpLabel();$$('.cmpnote').forEach(e=>e.textContent=t?'　前期比の'+t:'　期間（例：先月）を選ぶと前期比が表示されます。');}
 function noData(el){el.innerHTML='<p class="hint" style="padding:20px;text-align:center">この条件に当てはまるデータがありません。</p>';}
 const insHtml=a=>a.map(([e,t])=>`<div class="ins"><div class="e">${e}</div><div class="t">${t}</div></div>`).join('');
 
@@ -621,15 +655,19 @@ function rOverview(){
   const b2b=recs.filter(r=>r.type==='b2b');const b2bQ=sumQ(b2b);
   const nB2bDest=new Set(b2b.map(r=>r.dest)).size;
   const days=new Set(recs.map(r=>r.d)).size;const[mn,mx]=dateRange(recs);
-  const k=(l,v,u,s,c)=>`<div class="kpi" style="--c:${c}"><div class="l">${l}</div><div class="v">${v}<small>${u}</small></div><div class="s">${s}</div></div>`;
+  const P=prevOf(base().filter(r=>(!F.dest||r.dest===F.dest)&&(!F.prod||r.prod===F.prod)));
+  const pv=P?(()=>{const pb=P.filter(r=>r.type==='b2b');const t=sumQ(P);const dd=new Set(P.map(r=>r.d)).size;return{tot:t,sh:ships(P),b2bR:t?sumQ(pb)/t:0,nd:new Set(pb.map(r=>r.dest)).size,sku:new Set(P.map(r=>r.prod)).size,avg:dd?t/dd:0};})():null;
+  const dl=(cur,prev)=>pv?`<div class="dl">前期比 ${pctChg(cur,prev)}</div>`:'';
+  const dpt=(cur,prev)=>{if(!pv)return '';const v=(cur-prev)*100;const c=v>0.05?'up':v<-0.05?'down':'flat';return `<div class="dl">前期比 <span class="${c}">${v>0.05?'▲':v<-0.05?'▼':'±'}${Math.abs(v).toFixed(1)}pt</span></div>`;};
+  const k=(l,v,u,s,c,d)=>`<div class="kpi" style="--c:${c}"><div class="l">${l}</div><div class="v">${v}<small>${u}</small></div>${d||''}<div class="s">${s}</div></div>`;
   $('#kpis').innerHTML=[
-    k('出荷個数（合計）',nf(tot),'個',mn?`${mn.replace(/-/g,'/')} 〜 ${mx.replace(/-/g,'/')}`:'',COLORS[0]),
-    k('出荷件数（伝票）',nf(sh),'件',sh?`1件あたり ${(tot/sh).toFixed(1)}個`:'',COLORS[1]),
-    k('卸の割合',tot?pf(b2bQ/tot).replace('%',''):'0','%',`卸 ${nf(b2bQ)}個／個人 ${nf(tot-b2bQ)}個`,COLORS[2]),
-    k('卸先の数',nf(nB2bDest),'社','期間中に出荷があった卸先',COLORS[4]),
-    k('商品の数',nf(prods.length),'SKU','期間中に出荷があった商品',COLORS[6]),
-    k('1日あたり平均',days?nf(tot/days):'0','個',`出荷があった日 ${days}日`,COLORS[3])
-  ].join('');
+    k('出荷個数（合計）',nf(tot),'個',mn?`${mn.replace(/-/g,'/')} 〜 ${mx.replace(/-/g,'/')}`:'',COLORS[0],dl(tot,pv&&pv.tot)),
+    k('出荷件数（伝票）',nf(sh),'件',sh?`1件あたり ${(tot/sh).toFixed(1)}個`:'',COLORS[1],dl(sh,pv&&pv.sh)),
+    k('卸の割合',tot?pf(b2bQ/tot).replace('%',''):'0','%',`卸 ${nf(b2bQ)}個／個人 ${nf(tot-b2bQ)}個`,COLORS[2],dpt(tot?b2bQ/tot:0,pv&&pv.b2bR)),
+    k('卸先の数',nf(nB2bDest),'社','期間中に出荷があった卸先',COLORS[4],dl(nB2bDest,pv&&pv.nd)),
+    k('商品の数',nf(prods.length),'SKU','期間中に出荷があった商品',COLORS[6],dl(prods.length,pv&&pv.sku)),
+    k('1日あたり平均',days?nf(tot/days):'0','個',`出荷があった日 ${days}日`,COLORS[3],dl(days?tot/days:0,pv&&pv.avg))
+  ].join('')+`<div class="cmpbar" style="grid-column:1/-1">${pv?'▲▼は'+esc(cmpLabel())+'との比較です。':'期間を選ぶと（例：先月・直近30日）、その前の同じ長さの期間との比較（前期比）が表示されます。'}</div>`;
   const ins=[];
   const bd=agg(b2b,r=>r.dest);
   if(bd[0])ins.push(['🥇',`一番多い卸先は <b>${esc(short(bd[0].key,20))}</b>。卸全体の <b>${pf(bd[0].qty/b2bQ)}</b> を占めています。`]);
@@ -637,7 +675,11 @@ function rOverview(){
   if(!F.owner){const ow=agg(recs,r=>r.owner);if(ow[0])ins.push(['⚖️',`出荷が一番多い荷主は <b>${esc(ow[0].key)}</b>（全体の${pf(ow[0].qty/tot)}）。`]);}
   if(bd.length>=3){const s3=sum(bd.slice(0,3));ins.push(['🏢',`卸の上位3社で卸全体の <b>${pf(s3/b2bQ)}</b>。${s3/b2bQ>=0.7?'特定の卸先への集中度が高めです。':'卸先が分散しています。'}`]);}
   const wd=weekdayStats(recs);if(wd.best!=null)ins.push(['📅',`出荷が一番多い曜日は <b>${WD[wd.best]}曜日</b>（平均${nf(wd.avg[wd.best])}個／日）。`]);
-  $('#insights').innerHTML=insHtml(ins.slice(0,4));
+  if(P){const pm=new Map(agg(P.filter(r=>r.type==='b2b'),r=>r.dest).map(x=>[x.key,x.qty]));const keys=new Set([...bd.map(x=>x.key),...pm.keys()]);const cm=new Map(bd.map(x=>[x.key,x.qty]));
+    const ch=[...keys].map(k=>({k,d:(cm.get(k)||0)-(pm.get(k)||0)})).sort((a,b)=>b.d-a.d);
+    if(ch.length&&ch[0].d>0)ins.unshift(['📈',`前期より一番増えた卸先は <b>${esc(short(ch[0].k,18))}</b>（<span class="up">＋${nf(ch[0].d)}個</span>）。`]);
+    const lo=ch[ch.length-1];if(lo&&lo.d<0)ins.splice(1,0,['📉',`前期より一番減った卸先は <b>${esc(short(lo.k,18))}</b>（<span class="down">${nf(lo.d)}個</span>）。`]);}
+  $('#insights').innerHTML=insHtml(ins.slice(0,P?6:4));
   donut('ovDest',dests,x=>x);donut('ovProd',prods,pLabel);
   const g=F.gran;const ps=periods(recs,g);const ix=new Map(ps.map((p,i)=>[p,i]));
   const q=new Array(ps.length).fill(0),ss=ps.map(()=>new Set());
@@ -657,8 +699,8 @@ function rOwners(){
   donut('oDonut',list,x=>x);
   const b2bBy=new Map();all.forEach(r=>{if(r.type==='b2b')b2bBy.set(r.owner,(b2bBy.get(r.owner)||0)+r.q);});
   const skuBy=new Map(),dBy=new Map();all.forEach(r=>{(skuBy.get(r.owner)||skuBy.set(r.owner,new Set()).get(r.owner)).add(r.prod);if(r.type==='b2b')(dBy.get(r.owner)||dBy.set(r.owner,new Set()).get(r.owner)).add(r.dest);});
-  const el=$('#oRank');
-  if(list.length)rankTable(el,list,x=>x,x=>x,{head:'<th class="num">卸比率</th><th class="num">卸先数</th><th class="num">SKU数</th>',cell:x=>`<td class="num">${pf((b2bBy.get(x.key)||0)/x.qty)}</td><td class="num">${nf((dBy.get(x.key)||new Set()).size)}</td><td class="num">${nf((skuBy.get(x.key)||new Set()).size)}</td>`});else noData(el);
+  const el=$('#oRank');const PO=prevOf(scoped(records));const pmO=PO?new Map(agg(PO,r=>r.owner).map(x=>[x.key,x.qty])):null;setCmpNote();
+  if(list.length)rankTable(el,list,x=>x,x=>x,{head:'<th class="num">卸比率</th><th class="num">卸先数</th><th class="num">SKU数</th>',cell:x=>`<td class="num">${pf((b2bBy.get(x.key)||0)/x.qty)}</td><td class="num">${nf((dBy.get(x.key)||new Set()).size)}</td><td class="num">${nf((skuBy.get(x.key)||new Set()).size)}</td>`},pmO);else noData(el);
   trend('oTrend',all,r=>r.owner,list,x=>x,F.mode.owner,F.top.owner);
   const top=list.slice(0,12);
   mk('oMix',{type:'bar',data:{labels:top.map(x=>short(x.key,12)),datasets:[
@@ -676,7 +718,8 @@ function rDim(dim){
   const kf=isD?r=>r.dest:r=>r.prod,lf=isD?x=>x:pLabel,tf=isD?x=>x:pFull;
   const list=agg(recs,kf);
   donut(isD?'dDonut':'pDonut',list,lf);
-  const el=$(isD?'#dRank':'#pRank');if(list.length)rankTable(el,list,lf,tf);else noData(el);
+  const P=prevOf(base().filter(r=>(!F.dest||r.dest===F.dest)&&(!F.prod||r.prod===F.prod)));const pm=P?new Map(agg(P,kf).map(x=>[x.key,x.qty])):null;setCmpNote();
+  const el=$(isD?'#dRank':'#pRank');if(list.length)rankTable(el,list,lf,tf,null,pm);else noData(el);
   trend(isD?'dTrend':'pTrend',recs,kf,list,lf,F.mode[dim],F.top[dim]);
 }
 
@@ -767,7 +810,7 @@ function rAbc(){
 /* ---------- 設定タブ ---------- */
 const TYPE_LABEL={b2b:'卸',ec:'個人向け',mixed:'混在'};
 function rSettings(){renderShops();renderMixed();renderMerge();
-  $('#fileList').innerHTML=files.slice().sort((a,b)=>b.name.localeCompare(a.name,'ja')).map(f=>`<li>${esc(f.name)}　${f.err?`<b style="color:#c2410c">${esc(f.err)}</b>`:f.old?'（保持期間外）':`${f.minDate===f.maxDate?f.minDate:f.minDate+'〜'+f.maxDate}・${nf(f.rows.length)}行`}</li>`).join('')||'<li>なし</li>';}
+  $('#fileList').innerHTML=files.slice().sort((a,b)=>b.name.localeCompare(a.name,'ja')).map(f=>`<li>${esc(f.name)}　${f.err?`<b style="color:#c2410c">${esc(f.err)}</b>${f.ignored?'（警告を非表示）':''}`:f.old?'（保持期間外）':`${f.minDate===f.maxDate?f.minDate:f.minDate+'〜'+f.maxDate}・${nf(f.rows.length)}行${f.excel?'・<b style="color:#c2410c">Excel保存の可能性</b>':''}`}</li>`).join('')||'<li>なし</li>';}
 function renderShops(){
   const by=new Map();records.forEach(r=>{let o=by.get(r.shop);if(!o){o={q:0,s:new Set()};by.set(r.shop,o);}o.q+=r.q;o.s.add(r.slip);});
   const owners=[...new Set(Object.values(S.shops).map(s=>s.owner).filter(Boolean))];
@@ -829,7 +872,10 @@ function updateStatus(){
   const ok=files.filter(f=>!f.err);const[mn,mx]=dateRange(records);
   $('#status').innerHTML=files.length?`取り込み済み <b>${ok.length}</b>ファイル／集計対象 <b>${nf(records.length)}</b>行`+(mn?`（出荷日 ${mn.replace(/-/g,'/')} 〜 ${mx.replace(/-/g,'/')}）`:'')+(stats.dup?`／重複した伝票 ${nf(stats.dup)}行を除外`:'')+(stats.old?`／半年より前 ${nf(stats.old)}行を除外`:''):'まだ取り込んでいません。';
   const w=[];
-  const bad=files.filter(f=>f.err);if(bad.length)w.push(`読み込めないファイルがあります（${bad.map(f=>f.name).join('、')}）：${bad[0].err}`);
+  const bad=files.filter(f=>f.err&&!f.ignored);
+  if(bad.length)w.push(`出荷実績CSVとして読み込めないファイルがあります（${bad.map(f=>esc(f.name)).join('、')}）：${esc(bad[0].err)}。出荷実績CSVでなければ、フォルダから外すか <a data-ignore="bad">今後は表示しない</a>`);
+  const xl=files.filter(f=>f.excel&&!f.err&&!f.old&&!f.ignored);
+  if(xl.length)w.push(`Excelで開いて上書き保存されたと思われるCSVがあります（${xl.map(f=>esc(f.name)).join('、')}）。伝票コードが壊れているため、件数は宛先と時刻から推定しています（個数は正しく集計されます）。できればロジレスから出し直したCSVに差し替えてください。<a data-ignore="excel">今後は表示しない</a>`);
   const un=[...new Set(records.filter(r=>r.owner===UNASSIGNED).map(r=>r.shop))];
   if(un.length)w.push(`荷主が決まっていない店舗が ${un.length}件 あります（${un.slice(0,3).join('、')}${un.length>3?' など':''}）。<a data-goto="settings">⚙️ 設定タブ</a>で荷主名を入れてください。`);
   if(!hasChart)w.push('グラフ部品（chart.umd.min.js）を読み込めませんでした。');
@@ -895,7 +941,11 @@ async function reopenFolder(){
 /* ---------- イベント ---------- */
 function syncTabs(){$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===F.tab));$$('.panel').forEach(p=>p.classList.toggle('on',p.dataset.p===F.tab));}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;F.tab=b.dataset.t;syncTabs();renderTab();});
-$('#warn').addEventListener('click',e=>{const a=e.target.closest('[data-goto]');if(!a)return;F.tab=a.dataset.goto;syncTabs();renderTab();window.scrollTo({top:$('#tabs').offsetTop-10,behavior:'smooth'});});
+$('#warn').addEventListener('click',async e=>{
+  const ig=e.target.closest('[data-ignore]');
+  if(ig){const list=ig.dataset.ignore==='bad'?files.filter(f=>f.err&&!f.ignored):files.filter(f=>f.excel&&!f.err&&!f.ignored);
+    for(const f of list){f.ignored=true;await filePut(f).catch(()=>{});}updateStatus();toast('この警告は今後表示しません');return;}
+  const a=e.target.closest('[data-goto]');if(!a)return;F.tab=a.dataset.goto;syncTabs();renderTab();window.scrollTo({top:$('#tabs').offsetTop-10,behavior:'smooth'});});
 function segBind(sel,attr,cb,after){$$(sel).forEach(seg=>seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb(b.dataset[attr],seg);(after||renderTab)();}));}
 segBind('#scope','s',v=>F.scope=v,()=>{refreshOwners();refreshFilters();renderTab();});
 segBind('#gran','g',v=>F.gran=v);

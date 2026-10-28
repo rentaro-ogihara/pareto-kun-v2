@@ -53,6 +53,11 @@ header .seg button.on{background:#fff;color:#312e81}
 .drop.on{background:#e0e7ff;border-color:var(--accent)}
 .status{font-size:12px;color:var(--sub);margin-top:8px}
 .status b{color:var(--ink)}
+.auto{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;margin-left:6px}
+.auto.ok{background:#dcfce7;color:#166534}.auto.wait{background:#fef9c3;color:#854d0e}.auto.off{background:#f1f5f9;color:#475569}
+.auto i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+.btn.pulse{animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,70,229,.55)}70%{box-shadow:0 0 0 12px rgba(79,70,229,0)}100%{box-shadow:0 0 0 0 rgba(79,70,229,0)}}
 .warnbox{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px}
 .warnbox a{color:#9a3412;font-weight:700;cursor:pointer;text-decoration:underline}
 .filters{position:sticky;top:0;z-index:20;background:rgba(243,244,250,.95);backdrop-filter:blur(6px);padding:10px 0;margin-top:6px;border-bottom:1px solid var(--line)}
@@ -163,7 +168,7 @@ table{border-collapse:collapse;width:100%}
     </div>
     <input type="file" id="inFiles" accept=".csv,.json" multiple hidden>
     <input type="file" id="inDir" webkitdirectory multiple hidden>
-    <div class="status" id="status"></div>
+    <div class="status"><span id="status"></span><span id="autoState"></span></div>
     <div id="warn"></div>
   </div>
 
@@ -173,7 +178,7 @@ table{border-collapse:collapse;width:100%}
     <p class="hint">毎日の運用は、次の3ステップです。</p>
     <div class="steps">
       <div class="step"><div class="n">1</div><b>CSVを保存</b><br>ロジレスから前日分の出荷実績CSV（全荷主分）をダウンロードし、共有ドライブの「出荷実績CSV」フォルダに、そのまま保存します。ファイル名は変更不要です。</div>
-      <div class="step"><div class="n">2</div><b>フォルダを取り込む</b><br>初回は「フォルダを選んで取り込む」で、そのフォルダを選びます。2回目からは「フォルダから最新を取り込む」を押すと、新しいCSVだけを読み込みます。</div>
+      <div class="step"><div class="n">2</div><b>フォルダを選ぶ（初回だけ）</b><br>「フォルダを選んで取り込む」で、そのフォルダを選びます。アプリとしてインストールしていれば、次からは<b>開くだけで新しいCSVを自動で取り込みます</b>（開いている間も30分ごとに確認します）。</div>
       <div class="step"><div class="n">3</div><b>荷主を選んで見る</b><br>右上で荷主を選ぶと、その荷主の分析に切り替わります。「全荷主」では全体の合計を、「荷主比較」タブでは荷主どうしを比べられます。</div>
     </div>
   </div>
@@ -384,7 +389,8 @@ function shopCfg(k){
   return S.shops[k];
 }
 let dirty=false;
-function setDirty(v){dirty=v;const b=$('#btnSave');b.classList.toggle('dirty',v);b.textContent=v?'設定をフォルダに保存（未保存の変更あり）':'設定をフォルダに保存';}
+try{dirty=localStorage.getItem(LS+'_dirty')==='1';}catch(e){}
+function setDirty(v){dirty=v;try{localStorage.setItem(LS+'_dirty',v?'1':'0');}catch(e){}const b=$('#btnSave');b.classList.toggle('dirty',v);b.textContent=v?'設定をフォルダに保存（未保存の変更あり）':'設定をフォルダに保存';}
 
 /* ---------- IndexedDB ---------- */
 function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('paretoKun',1);r.onupgradeneeded=()=>{r.result.createObjectStore('files',{keyPath:'id'});r.result.createObjectStore('kv');};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
@@ -892,40 +898,49 @@ async function importSettings(file,silent){
 async function saveSettings(){
   const data=JSON.stringify({type:'pareto-kun-settings',version:1,savedAt:new Date().toISOString(),settings:S},null,2);
   if(dirHandle){try{let p=await dirHandle.queryPermission({mode:'readwrite'});if(p!=='granted')p=await dirHandle.requestPermission({mode:'readwrite'});
-    if(p==='granted'){const fh=await dirHandle.getFileHandle(SETTINGS_NAME,{create:true});const w=await fh.createWritable();await w.write(data);await w.close();setDirty(false);toast('取り込んだフォルダに設定を保存しました');return;}}catch(e){}}
+    if(p==='granted'){const fh=await dirHandle.getFileHandle(SETTINGS_NAME,{create:true});const w=await fh.createWritable();await w.write(data);await w.close();setDirty(false);
+      try{await kvSet('settingsLm',(await fh.getFile()).lastModified);}catch(e){}
+      toast('取り込んだフォルダに設定を保存しました');return;}}catch(e){}}
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=SETTINGS_NAME;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   setDirty(false);toast('設定ファイルをダウンロードしました。CSVと同じフォルダに置いてください');
 }
 
 /* ---------- 取り込み ---------- */
-async function ingest(list,{sync=false}={}){
-  busy(true,'読み込み中…');
+let settingsConflictShown=false;
+async function ingest(list,{sync=false,quiet=false}={}){
+  if(!quiet)busy(true,'読み込み中…');
   try{
     const csvs=list.filter(f=>/\.csv$/i.test(f.name));const setFile=list.find(f=>f.name===SETTINGS_NAME);
-    if(setFile)await importSettings(setFile,true);
+    let setChanged=false;
+    if(setFile){const last=await kvGet('settingsLm').catch(()=>null);
+      if(setFile.lastModified!==last){
+        if(dirty){if(!quiet||!settingsConflictShown){settingsConflictShown=true;toast('フォルダの共有設定が更新されていますが、このPCに未保存の変更があるため反映していません');}}
+        else{await importSettings(setFile,true);await kvSet('settingsLm',setFile.lastModified).catch(()=>{});setChanged=true;}}}
     const known=new Map(files.map(f=>[f.id,f]));const seenIds=new Set();let added=0,i=0;
     let mx='';files.forEach(f=>{if(!f.err&&f.maxDate>mx)mx=f.maxDate;});
     for(const f of csvs){
       i++;const id=f.name+'|'+f.size+'|'+f.lastModified;seenIds.add(id);
       if(known.has(id))continue;
-      busy(true,`読み込み中… ${i}/${csvs.length}`);
+      busy(true,`新しいCSVを読み込み中… ${i}/${csvs.length}`);
       const p=parseFile(f.name,f.size,f.lastModified,await readText(f));
       files.push(p);known.set(id,p);added++;
       if(p.maxDate>mx)mx=p.maxDate;
     }
-    if(sync){const rm=files.filter(f=>!seenIds.has(f.id));for(const f of rm)await fileDel(f.id).catch(()=>{});files=files.filter(f=>seenIds.has(f.id));}
+    let removed=0;
+    if(sync){const rm=files.filter(f=>!seenIds.has(f.id));removed=rm.length;for(const f of rm)await fileDel(f.id).catch(()=>{});files=files.filter(f=>seenIds.has(f.id));}
     // 保持期間外のファイルは中身を捨てて目印だけ残す
     if(mx){const d=toD(mx);d.setDate(d.getDate()-RETAIN_DAYS+1);const co=fmt(d);files.forEach(f=>{if(!f.err&&!f.old&&f.maxDate&&f.maxDate<co){f.old=true;f.rows=[];f._dirty=true;}});}
     for(const f of files){if(f._dirty||!f._saved){delete f._dirty;f._saved=true;await filePut(f).catch(()=>{});}}
     await kvSet('lastImport',new Date().toISOString()).catch(()=>{});
-    rebuild();
-    toast(added?`${added}ファイルを新しく取り込みました`:'新しいCSVはありませんでした');
+    if(added||removed||setChanged||!quiet)rebuild();
+    if(added)toast(`${added}ファイルを新しく取り込みました`);else if(!quiet)toast('新しいCSVはありませんでした');
+    return added;
   }finally{busy(false);}
 }
 async function filesFromDir(h){const out=[];for await(const[name,entry]of h.entries()){if(entry.kind!=='file')continue;if(/\.csv$/i.test(name)||name===SETTINGS_NAME)out.push(await entry.getFile());}return out;}
 async function pickFolder(){
   if(window.showDirectoryPicker){
-    try{const h=await window.showDirectoryPicker({id:'paretokun',mode:'readwrite'});dirHandle=h;await kvSet('dir',h).catch(()=>{});$('#btnReopen').style.display='';await ingest(await filesFromDir(h),{sync:true});return;}
+    try{const h=await window.showDirectoryPicker({id:'paretokun',mode:'readwrite'});dirHandle=h;await kvSet('dir',h).catch(()=>{});$('#btnReopen').style.display='';await ingest(await filesFromDir(h),{sync:true});lastSync=Date.now();setAutoState('ok',`自動取り込み ON（${hhmm()} 確認）`);return;}
     catch(e){if(e&&e.name==='AbortError')return;}
   }
   $('#inDir').click();
@@ -934,9 +949,37 @@ async function reopenFolder(){
   try{const h=await kvGet('dir');if(!h){toast('前回のフォルダが記録されていません');return;}
     let p=await h.queryPermission({mode:'readwrite'});if(p!=='granted')p=await h.requestPermission({mode:'readwrite'});
     if(p!=='granted'){toast('フォルダへのアクセスが許可されませんでした');return;}
-    dirHandle=h;await ingest(await filesFromDir(h),{sync:true});
+    dirHandle=h;await ingest(await filesFromDir(h),{sync:true});lastSync=Date.now();
+    setAutoState('ok',isApp()?`自動取り込み ON（${hhmm()} 確認）`:`${hhmm()} に取り込みました`);
   }catch(e){toast('前回のフォルダを開けませんでした。「フォルダを選んで取り込む」から選び直してください');}
 }
+
+/* ---------- 自動取り込み ----------
+   アプリとしてインストールしていれば、一度許可したフォルダへのアクセスはずっと保持される（Chrome 122〜）。
+   その場合は、起動時・画面に戻ってきたとき・開いている間30分ごとに、新しいCSVを自動で取り込む。 */
+const isApp=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+let syncing=false,lastSync=0;
+function setAutoState(kind,msg){
+  const el=$('#autoState');const b=$('#btnReopen');
+  b.classList.toggle('pulse',kind==='wait');
+  b.textContent=kind==='wait'?'🔄 ここを押して最新を取り込む':'🔄 フォルダから最新を取り込む';
+  el.innerHTML=kind?`<span class="auto ${kind}"><i></i>${msg}</span>`:'';
+}
+const hhmm=()=>{const d=new Date();return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');};
+async function autoSync(){
+  if(syncing||!window.showDirectoryPicker)return;
+  let h=null;try{h=await kvGet('dir');}catch(e){}
+  if(!h){setAutoState('off','自動取り込み：フォルダ未設定（「フォルダを選んで取り込む」で設定）');return;}
+  let p='prompt';try{p=await h.queryPermission({mode:'readwrite'});}catch(e){}
+  if(p!=='granted'){setAutoState('wait',isApp()?'フォルダの再許可が必要です（ボタンを1回押してください）':'ブラウザで開いているため、ボタンを1回押してください（アプリとしてインストールすると自動になります）');return;}
+  syncing=true;
+  try{dirHandle=h;const n=await ingest(await filesFromDir(h),{sync:true,quiet:true});lastSync=Date.now();
+    setAutoState('ok',`自動取り込み ON（${hhmm()} 確認${n?`・${n}ファイル追加`:'・新しいCSVなし'}）`);}
+  catch(e){setAutoState('wait','フォルダを読めませんでした（Googleドライブの同期を確認して、ボタンを押してください）');}
+  finally{syncing=false;}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-lastSync>5*60e3)autoSync();});
+setInterval(()=>{if(document.visibilityState==='visible')autoSync();},30*60e3);
 
 /* ---------- イベント ---------- */
 function syncTabs(){$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===F.tab));$$('.panel').forEach(p=>p.classList.toggle('on',p.dataset.p===F.tab));}
@@ -977,7 +1020,7 @@ const drop=$('#drop');
 document.addEventListener('drop',e=>{if(e.dataTransfer&&e.dataTransfer.files.length)ingest([...e.dataTransfer.files]);});
 $('#btnSave').addEventListener('click',saveSettings);
 $('#btnLoadSet').addEventListener('click',()=>$('#inSet').click());
-$('#inSet').addEventListener('change',async e=>{if(e.target.files[0])await importSettings(e.target.files[0],false);e.target.value='';});
+$('#inSet').addEventListener('change',async e=>{if(e.target.files[0]){setDirty(false);await importSettings(e.target.files[0],false);}e.target.value='';});
 $('#btnWipe').addEventListener('click',async()=>{if(!confirm('このPCに保存した出荷データをすべて削除しますか？（共有ドライブのCSVは消えません）'))return;await filesClear().catch(()=>{});files=[];records=[];rebuild();toast('保存データを削除しました');});
 $('#shopTable').addEventListener('change',e=>{const t=e.target;
   if(t.dataset.shopOwner!==undefined){shopCfg(t.dataset.shopOwner).owner=t.value.trim();settingsChanged();}
@@ -997,13 +1040,14 @@ let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>
 (async()=>{
   try{files=(await filesAll())||[];files.forEach(f=>f._saved=true);}catch(e){files=[];}
   try{if(window.showDirectoryPicker&&await kvGet('dir'))$('#btnReopen').style.display='';}catch(e){}
+  setDirty(dirty); // 前回、保存せずに閉じた変更があれば「未保存」と表示
   rebuild();
+  autoSync();
 })();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 /* ---------- アプリとしてインストール ---------- */
 const btnInstall=$('#btnInstall');
-const isApp=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 let installEvt=null,sawEvt=false;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();installEvt=e;sawEvt=true;

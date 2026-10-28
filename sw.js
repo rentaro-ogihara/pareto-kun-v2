@@ -1,7 +1,7 @@
 // パレート君 Service Worker
 // 画面（index.html）はネット優先で最新版を取得し、オフライン時は保存済みの版を使います。
 // ツールを更新したら VERSION の数字を上げてください。
-const VERSION = 'pareto-kun-v6';
+const VERSION = 'pareto-kun-v7';
 const ASSETS = [
   './',
   'index.html',
